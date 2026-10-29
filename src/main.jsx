@@ -885,6 +885,23 @@ function App() {
     document.getElementById('shop')?.scrollIntoView({ behavior: 'smooth' });
   }
 
+  function jumpToContact() {
+    setMenuOpen(false);
+    document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function submitContactForm(event) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const name = String(formData.get('name') || '').trim();
+    const phone = String(formData.get('phone') || '').trim();
+    const message = String(formData.get('message') || '').trim();
+    const text = [`Hi TK Tech, my name is ${name}.`, phone ? `My phone number is ${phone}.` : '', message].filter(Boolean).join('\n\n');
+    const contactUrl = new URL(whatsappUrl);
+    contactUrl.searchParams.set('text', text);
+    window.open(contactUrl.toString(), '_blank', 'noopener,noreferrer');
+  }
+
   function returnHome() {
     setSearch('');
     setActiveCategory('All laptops');
@@ -970,6 +987,7 @@ function App() {
           <button onClick={() => jumpToShop('Work')}>For work</button>
           <button onClick={() => jumpToShop('Everyday')}>Everyday</button>
           <button onClick={() => jumpToShop('Gaming')}>Gaming</button>
+          <button onClick={jumpToContact}>Contact</button>
           <button className="account-nav-link" onClick={openAccountDialog}>{accountUser ? 'My account' : 'Sign in'}</button>
         </nav>
         <div className="header-actions">
@@ -1058,6 +1076,24 @@ function App() {
           <div className="manifesto-portrait"><img src="/images/taimur-khan.jpg" alt="Taimur Khan, founder of TK Tech" loading="lazy" /><span>TAIMUR KHAN · FOUNDER</span></div>
           <div className="manifesto-copy"><div className="eyebrow"><span className="eyebrow-dot" /> A NOTE FROM TAIMUR</div><h2>Less scrolling.<br />More <span>living.</span></h2><p>Buying a laptop shouldn't feel like a second job. We make the shortlist, so you can get back to the good stuff.</p><button className="manifesto-link" onClick={() => jumpToShop()}>Find your fit <span>↗</span></button></div>
           <div className="manifesto-aside"><span>GOOD TECH ISN'T<br />ABOUT MORE SPECS.</span><span className="manifesto-aside-star">✳</span><span>IT'S ABOUT WHAT<br />YOU DO WITH THEM.</span></div>
+        </section>
+
+        <section className="contact-section" id="contact" aria-labelledby="contact-title">
+          <div className="contact-copy">
+            <div className="eyebrow"><span className="eyebrow-dot" /> TALK TO A REAL PERSON</div>
+            <h2 id="contact-title">Let’s find your <span>fit.</span></h2>
+            <p>Tell us what you need in a laptop. We’ll help you choose the right one.</p>
+            <a className="contact-direct" href={whatsappUrl} target="_blank" rel="noreferrer">Message us on WhatsApp <span aria-hidden="true">↗</span></a>
+          </div>
+          <form className="contact-form" onSubmit={submitContactForm}>
+            <div className="contact-form-fields">
+              <label>Your name<input name="name" type="text" autoComplete="name" maxLength="80" required /></label>
+              <label>Phone number (optional)<input name="phone" type="tel" autoComplete="tel" inputMode="tel" maxLength="30" placeholder="03xx xxxxxxx" /></label>
+            </div>
+            <label>How can we help?<textarea name="message" rows="4" maxLength="1000" required placeholder="Tell us what you’re looking for…" /></label>
+            <button className="button button-dark" type="submit">Send via WhatsApp <Icon name="arrow" size={16} /></button>
+            <small>WhatsApp will open with your message ready. You’ll send it there.</small>
+          </form>
         </section>
 
         <section className="newsletter">
