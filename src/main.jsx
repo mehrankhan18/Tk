@@ -462,9 +462,6 @@ function App() {
   const [wishlistOnly, setWishlistOnly] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [notice, setNotice] = useState('');
-  const [newsletterEmail, setNewsletterEmail] = useState('');
-  const [newsletterStatus, setNewsletterStatus] = useState('idle');
-  const [newsletterMessage, setNewsletterMessage] = useState('');
   const [accountUser, setAccountUser] = useState(null);
   const [accountStatus, setAccountStatus] = useState('loading');
   const [accountOpen, setAccountOpen] = useState(false);
@@ -572,26 +569,6 @@ function App() {
     setCatalogError('');
     setCatalogStatus('loading');
     setCatalogRetry((attempt) => attempt + 1);
-  }
-
-  async function subscribeToNewsletter(event) {
-    event.preventDefault();
-    setNewsletterStatus('submitting');
-    setNewsletterMessage('');
-    try {
-      const response = await fetch('/api/newsletter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: newsletterEmail }),
-      });
-      if (!response.ok) throw new Error(await getApiError(response));
-      setNewsletterEmail('');
-      setNewsletterStatus('success');
-      setNewsletterMessage('You’re on the list. Thanks for signing up.');
-    } catch (error) {
-      setNewsletterStatus('error');
-      setNewsletterMessage(error instanceof Error ? error.message : 'We could not save your email. Please try again.');
-    }
   }
 
   function openAccountDialog() {
@@ -704,9 +681,9 @@ function App() {
       },
     });
 
-    gsap.utils.toArray('.trust-strip, .shop-section, .manifesto, .newsletter').forEach((section) => {
+    gsap.utils.toArray('.trust-strip, .shop-section, .manifesto').forEach((section) => {
       const targets = section.querySelectorAll(
-        '.trust-strip > div, .section-heading > *, .shop-controls, .catalog-footnote, .manifesto-portrait, .manifesto-copy > *, .manifesto-aside > *, .newsletter > *',
+        '.trust-strip > div, .section-heading > *, .shop-controls, .catalog-footnote, .manifesto-portrait, .manifesto-copy > *, .manifesto-aside > *',
       );
       if (!targets.length) return;
 
@@ -1096,10 +1073,6 @@ function App() {
           </form>
         </section>
 
-        <section className="newsletter">
-          <div><div className="eyebrow"><span className="eyebrow-dot" /> OCCASIONAL GOOD NEWS</div><h2>Stay in the <span>loop.</span></h2><p>New finds, useful tips, and the occasional very good deal.</p></div>
-          <form onSubmit={subscribeToNewsletter} className="newsletter-form"><label htmlFor="newsletter-email">YOUR EMAIL ADDRESS</label><div><input id="newsletter-email" name="email" type="email" autoComplete="email" placeholder="you@example.com" value={newsletterEmail} onChange={(event) => setNewsletterEmail(event.target.value)} required disabled={newsletterStatus === 'submitting'} /><button type="submit" aria-label="Join the newsletter" disabled={newsletterStatus === 'submitting'}><Icon name="arrow" /></button></div><small>Occasional product news and offers from TK Tech.</small>{newsletterMessage && <p className={`newsletter-feedback ${newsletterStatus}`} role={newsletterStatus === 'error' ? 'alert' : 'status'}>{newsletterMessage}</p>}</form>
-        </section>
         </>
       </main>
 
