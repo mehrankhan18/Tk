@@ -127,6 +127,9 @@ function Dashboard({ products, onBrowse, onAddProduct, onUpdateProduct, onDelete
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [actionMenuProductId, setActionMenuProductId] = useState(null);
+  const [productSearch, setProductSearch] = useState('');
+  const [productCategoryFilter, setProductCategoryFilter] = useState('All categories');
   const [catalogError, setCatalogError] = useState('');
   const [legacyProducts, setLegacyProducts] = useState(loadLegacyProducts);
   const [importingLegacyProducts, setImportingLegacyProducts] = useState(false);
@@ -151,6 +154,13 @@ function Dashboard({ products, onBrowse, onAddProduct, onUpdateProduct, onDelete
     name: category,
     count: products.filter((product) => product.category === category).length,
   }));
+  const filteredDashboardProducts = products.filter((product) => {
+    const query = productSearch.trim().toLowerCase();
+    const matchesQuery = !query || [product.name, product.brand, product.category].some((value) => value.toLowerCase().includes(query));
+    const matchesCategory = productCategoryFilter === 'All categories' || product.category === productCategoryFilter;
+    return matchesQuery && matchesCategory;
+  });
+  const deletingProduct = products.find((product) => product.id === deleteConfirmId);
 
   useGSAP(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -263,10 +273,12 @@ function Dashboard({ products, onBrowse, onAddProduct, onUpdateProduct, onDelete
 
   async function deleteProduct(product) {
     setCatalogError('');
+    setActionMenuProductId(null);
     try {
       await onDeleteProduct(product.id);
     } catch (error) {
       setCatalogError(error instanceof Error ? error.message : `Could not delete ${product.name} from the database.`);
+      setDeleteConfirmId(null);
       return;
     }
 
@@ -288,7 +300,7 @@ function Dashboard({ products, onBrowse, onAddProduct, onUpdateProduct, onDelete
         <div className="dashboard-sidebar-heading"><span className="eyebrow-dot" /> ADMIN CONSOLE</div>
         <a className="dashboard-side-link active" href="#dashboard-overview">Overview <span>01</span></a>
         <a className="dashboard-side-link" href="#dashboard-products">Product catalog <span>{products.length}</span></a>
-        <div className="dashboard-sidebar-note">Only the signed-in admin can add, edit, or remove products. The catalog is stored in SQLite.</div>
+        <div className="dashboard-sidebar-note">Manage laptop listings, update product details, and keep the storefront catalog current.</div>
         <button className="dashboard-back-link" onClick={onBrowse}>← Back to storefront</button>
         <button className="dashboard-signout-link" onClick={() => void signOutAdmin()}>Sign out</button>
       </aside>
@@ -334,13 +346,13 @@ function Dashboard({ products, onBrowse, onAddProduct, onUpdateProduct, onDelete
                 <span className="dashboard-file-button">{imageFileName ? 'Change photo' : 'Choose file'}</span>
               </label>
               {newProduct.image && <div className="dashboard-image-preview"><img src={newProduct.image} alt="Selected laptop preview" /><span>Photo ready · resized for the catalog</span><button type="button" onClick={() => { setNewProduct({ ...newProduct, image: '' }); setImageFileName(''); }}>Remove</button></div>}
-              <small>JPG, PNG, or WebP · up to 10 MB. The resized photo is saved with the product on this computer.</small>
+              <small>JPG, PNG, or WebP · up to 10 MB. The resized photo is saved with this listing.</small>
             </div>
           </div>
           {formError && <p className="dashboard-form-error" role="alert">{formError}</p>}
-          <div className="dashboard-form-actions"><p>Saved to the local SQLite database. No inventory or checkout is connected.</p><button className="button button-dark" type="submit" disabled={imageProcessing || !databaseConnected}>{imageProcessing ? 'Preparing photo…' : editingProductId ? 'Save changes' : 'Save laptop'} <Icon name="check" size={16} /></button></div>
+          <div className="dashboard-form-actions"><p>Saved listings appear in the storefront catalog after saving.</p><button className="button button-dark" type="submit" disabled={imageProcessing || !databaseConnected}>{imageProcessing ? 'Preparing photo…' : editingProductId ? 'Save changes' : 'Save laptop'} <Icon name="check" size={16} /></button></div>
         </form>}
-        <div className={`dashboard-notice ${databaseConnected ? '' : 'database-disconnected'}`} role={databaseConnected ? 'note' : 'alert'}>{databaseConnected ? <><strong>Database connected:</strong> catalog listings are saved on this computer and shared with browsers using this server.</> : <><strong>Database not connected:</strong> {databaseError || 'Start the API server before adding or deleting products.'} <button className="catalog-retry-button" onClick={onRetryDatabase}>Reconnect</button></>}</div>
+        <div className={`dashboard-notice ${databaseConnected ? '' : 'database-disconnected'}`} role={databaseConnected ? 'note' : 'alert'}>{databaseConnected ? <><strong>Catalog connected:</strong> changes are saved to the website catalog and shown to visitors.</> : <><strong>Catalog unavailable:</strong> {databaseError || 'Reconnect the catalog before adding, editing, or deleting products.'} <button className="catalog-retry-button" onClick={onRetryDatabase}>Reconnect</button></>}</div>
         <div className="dashboard-metrics">
           <article className="dashboard-metric"><span>CATALOG PRODUCTS</span><strong>{products.length.toString().padStart(2, '0')}</strong><small>Saved catalog listings</small></article>
           <article className="dashboard-metric"><span>CATEGORIES</span><strong>{categoryCounts.length.toString().padStart(2, '0')}</strong><small>In the current catalog</small></article>
@@ -353,13 +365,18 @@ function Dashboard({ products, onBrowse, onAddProduct, onUpdateProduct, onDelete
             <div className="category-breakdown">{categoryCounts.map(({ name, count }) => <div className="category-breakdown-row" key={name}><div><span>{name}</span><strong>{count} {count === 1 ? 'product' : 'products'}</strong></div><span className="category-bar"><i style={{ width: `${(count / products.length) * 100}%` }} /></span></div>)}</div>
           </section>
           <section className="dashboard-panel orders-panel">
-            <div className="dashboard-panel-heading"><div><span className="eyebrow">ORDERS</span><h2>Sales activity</h2></div><span className="dashboard-panel-icon">↗</span></div>
-            <div className="dashboard-unavailable"><span>—</span><strong>No order data yet</strong><p>Sales and order records are not collected by this catalog database.</p></div>
+            <div className="dashboard-panel-heading"><div><span className="eyebrow">QUICK GUIDE</span><h2>Managing your catalog</h2></div><span className="dashboard-panel-icon">✳</span></div>
+            <div className="dashboard-guide-list"><p><span>01</span>Add a laptop with its price, specs, and photo.</p><p><span>02</span>Edit a listing to update details on the storefront.</p><p><span>03</span>Use the row’s More menu for less common actions.</p></div>
           </section>
         </div>
         <section className="dashboard-panel dashboard-products-panel" id="dashboard-products">
           <div className="dashboard-panel-heading"><div><span className="eyebrow">CURRENT CATALOG LISTINGS</span><h2>Product catalog</h2></div><button className="dashboard-inline-link" onClick={onBrowse}>Browse products <span>↗</span></button></div>
-          <div className="dashboard-table-wrap"><table className="dashboard-table"><thead><tr><th>PRODUCT</th><th>BRAND</th><th>CATEGORY</th><th>LIST PRICE</th><th>DATA SOURCE</th><th>ACTIONS</th></tr></thead><tbody>{products.map((product) => <tr key={product.id}><td><div className="dashboard-product-name">{product.image ? <img src={product.image} alt="" loading="lazy" /> : <span className="dashboard-image-placeholder">TK</span>}<strong>{product.name}</strong></div></td><td>{product.brand}</td><td>{product.category}</td><td>{money(product.price)}</td><td><span className={`sample-status ${product.custom ? 'saved-status' : ''}`}>{product.custom ? 'Database' : 'Sample'}</span></td><td className="dashboard-row-actions"><div className="dashboard-product-actions"><button className="dashboard-product-action" onClick={() => setViewingProduct(product)}>View</button><button className="dashboard-product-action" onClick={() => editProduct(product)} disabled={!databaseConnected}>Edit</button>{deleteConfirmId === product.id ? <div className="dashboard-delete-confirm"><span>Delete?</span><button className="dashboard-delete-confirm-button" onClick={() => deleteProduct(product)} aria-label={`Confirm deleting ${product.name}`} disabled={!databaseConnected}>Yes</button><button className="dashboard-delete-cancel" onClick={() => setDeleteConfirmId(null)} aria-label={`Cancel deleting ${product.name}`}>No</button></div> : <button className="dashboard-delete-button" onClick={() => { setDeleteConfirmId(product.id); setFormSuccess(''); setCatalogError(''); }} aria-label={`Delete ${product.name}`} disabled={!databaseConnected}>Delete</button>}</div></td></tr>)}</tbody></table></div>
+          <div className="dashboard-catalog-tools">
+            <label className="dashboard-catalog-search"><Icon name="search" size={16} /><input type="search" value={productSearch} onChange={(event) => setProductSearch(event.target.value)} placeholder="Search products or brands" aria-label="Search products or brands" /></label>
+            <label className="dashboard-catalog-category"><span className="sr-only">Filter by category</span><select value={productCategoryFilter} onChange={(event) => setProductCategoryFilter(event.target.value)}><option>All categories</option>{[...new Set(products.map((product) => product.category))].map((category) => <option key={category}>{category}</option>)}</select></label>
+            <span className="dashboard-catalog-count">Showing {filteredDashboardProducts.length} of {products.length}</span>
+          </div>
+          <div className="dashboard-table-wrap"><table className="dashboard-table"><thead><tr><th>PRODUCT</th><th>BRAND</th><th>CATEGORY</th><th>LIST PRICE</th><th>TYPE</th><th>ACTIONS</th></tr></thead><tbody>{filteredDashboardProducts.length ? filteredDashboardProducts.map((product) => <tr key={product.id}><td><div className="dashboard-product-name">{product.image ? <img src={product.image} alt="" loading="lazy" /> : <span className="dashboard-image-placeholder">TK</span>}<strong>{product.name}</strong></div></td><td>{product.brand}</td><td>{product.category}</td><td>{money(product.price)}</td><td><span className={`sample-status ${product.custom ? 'saved-status' : ''}`}>{product.custom ? 'Custom' : 'Sample'}</span></td><td className="dashboard-row-actions"><div className="dashboard-product-actions"><button className="dashboard-product-action" onClick={() => { setActionMenuProductId(null); setViewingProduct(product); }}>View</button><button className="dashboard-product-action" onClick={() => { setActionMenuProductId(null); editProduct(product); }} disabled={!databaseConnected}>Edit</button>{deleteConfirmId === product.id ? <span className="dashboard-delete-pending">Confirming…</span> : <div className="dashboard-row-menu-wrap"><button className="dashboard-more-button" onClick={() => setActionMenuProductId((current) => current === product.id ? null : product.id)} aria-label={`More actions for ${product.name}`} aria-expanded={actionMenuProductId === product.id} disabled={!databaseConnected}><span aria-hidden="true">⋯</span></button>{actionMenuProductId === product.id && <div className="dashboard-row-menu" role="menu"><button className="dashboard-row-menu-delete" role="menuitem" onClick={() => { setActionMenuProductId(null); setDeleteConfirmId(product.id); setFormSuccess(''); setCatalogError(''); }}>Delete laptop</button></div>}</div>}</div></td></tr>) : <tr><td className="dashboard-empty-row" colSpan="6">{products.length ? 'No laptops match your search.' : 'No products are in the catalog yet.'}</td></tr>}</tbody></table></div>
         </section>
       </div>
       {viewingProduct && <div className="overlay admin-product-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) setViewingProduct(null); }}>
@@ -373,7 +390,15 @@ function Dashboard({ products, onBrowse, onAddProduct, onUpdateProduct, onDelete
             <div><dt>Product label</dt><dd>{viewingProduct.note || '—'}</dd></div>
             {viewingProduct.specs.map((spec, index) => <div key={`${viewingProduct.id}-${index}`}><dt>{['Processor', 'Memory', 'Storage'][index]}</dt><dd>{spec}</dd></div>)}
           </dl>
-          <button className="button button-dark admin-product-edit" onClick={() => editProduct(viewingProduct)}>Edit product <Icon name="arrow" size={16} /></button>
+          <button className="button button-dark admin-product-edit" onClick={() => editProduct(viewingProduct)} disabled={!databaseConnected}>Edit product <Icon name="arrow" size={16} /></button>
+        </section>
+      </div>}
+      {deletingProduct && <div className="overlay admin-delete-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) setDeleteConfirmId(null); }}>
+        <section className="admin-delete-dialog" role="alertdialog" aria-modal="true" aria-labelledby="admin-delete-title" aria-describedby="admin-delete-description">
+          <span className="eyebrow">REMOVE CATALOG LISTING</span>
+          <h2 id="admin-delete-title">Delete this laptop?</h2>
+          <p id="admin-delete-description"><strong>{deletingProduct.name}</strong> will be removed from the product catalog and storefront.</p>
+          <div className="admin-delete-dialog-actions"><button className="button" onClick={() => setDeleteConfirmId(null)}>Cancel</button><button className="button admin-delete-final-button" onClick={() => void deleteProduct(deletingProduct)} disabled={!databaseConnected}>Delete laptop</button></div>
         </section>
       </div>}
     </section>
