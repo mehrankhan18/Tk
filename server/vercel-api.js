@@ -1,7 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import { createHash, randomBytes, randomUUID, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
-import { seedProducts } from '../server/products.js';
+import { seedProducts } from './products.js';
 
 const scrypt = promisify(scryptCallback);
 const customerCookie = 'tk_tech_session';
@@ -339,21 +339,25 @@ async function handleRequest(request, response, sql, pathname) {
   return sendJson(response, 404, { error: 'API route was not found.' });
 }
 
-export default async function handler(request, response) {
-  if (request.method === 'OPTIONS') {
-    response.statusCode = 204;
-    return response.end();
-  }
-  const sql = getSql();
-  if (!sql) return sendJson(response, 503, { error: 'Connect a Neon Postgres database to this Vercel project and set DATABASE_URL.' });
+export function createApiHandler(route) {
+  return async function handler(request, response) {
+    if (request.method === 'OPTIONS') {
+      response.statusCode = 204;
+      return response.end();
+    }
+    const sql = getSql();
+    if (!sql) return sendJson(response, 503, { error: 'Connect a Neon Postgres database to this Vercel project and set DATABASE_URL.' });
 
-  try {
-    await ensureSchema(sql);
-    const requestUrl = new URL(request.url || '/api', `https://${request.headers.host || 'localhost'}`);
-    const pathname = requestUrl.pathname.replace(/^\/api(?=\/|$)/, '').replace(/\/+$/, '') || '/';
-    await handleRequest(request, response, sql, pathname);
-  } catch (error) {
-    console.error('Vercel API request failed:', error);
-    if (!response.headersSent) sendJson(response, 500, { error: 'The catalog request failed. Check the Vercel API and database configuration.' });
-  }
+    try {
+      await ensureSchema(sql);
+      const requestUrl = new URL(request.url || '/api', `https://${request.headers.host || 'localhost'}`);
+      const pathname = typeof route === 'function'
+        ? route(request, requestUrl)
+        : route;
+      await handleRequest(request, response, sql, pathname);
+    } catch (error) {
+      console.error('Vercel API request failed:', error);
+      if (!response.headersSent) sendJson(response, 500, { error: 'The catalog request failed. Check the Vercel API and database configuration.' });
+    }
+  };
 }

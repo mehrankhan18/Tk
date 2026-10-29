@@ -3,6 +3,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
+    { "source": "/api/products/:id", "destination": "/api/product?id=:id" },
     { "source": "/admin", "destination": "/" },
     { "source": "/admin/", "destination": "/" }
   ]
